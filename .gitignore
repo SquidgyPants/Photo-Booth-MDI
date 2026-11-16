@@ -1,0 +1,11 @@
+# Geheimen: nooit committen (SMTP-wachtwoord, booth key, API-keys)
+.env
+
+# Afhankelijkheden (Render doet `npm install` zelf)
+node_modules/
+
+# Opgeslagen foto's van gasten
+data/
+
+# IDE
+.idea/

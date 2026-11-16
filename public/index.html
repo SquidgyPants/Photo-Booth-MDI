@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Photo Booth</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Photo Booth">
+  <meta name="theme-color" content="#111111">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-512.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Live camerabeeld (blijft altijd op de achtergrond) -->
+    <video id="video" autoplay playsinline muted></video>
+
+    <!-- START -->
+    <section id="screen-start" class="screen active">
+      <header class="top">
+        <h1 id="event-name">Photo Booth</h1>
+        <p class="sub">3 foto's · elke 5 seconden</p>
+      </header>
+      <div class="bottom">
+        <button id="btn-flash" class="pill" aria-pressed="true">
+          <span class="icon">⚡</span> Flits: <strong id="flash-state">aan</strong>
+        </button>
+        <button id="btn-start" class="big-btn">📸 Maak foto's</button>
+      </div>
+      <p id="camera-error" class="error hidden"></p>
+    </section>
+
+    <!-- AFTELLEN / FOTO'S MAKEN -->
+    <section id="screen-capture" class="screen">
+      <div class="shot-label" id="shot-label">Foto 1 van 3</div>
+      <div class="countdown" id="countdown">5</div>
+      <div class="thumbs" id="thumbs"></div>
+    </section>
+
+    <!-- RESULTAAT -->
+    <section id="screen-review" class="screen panel-screen">
+      <div class="review-layout">
+        <img id="strip-preview" alt="Jouw fotostrip">
+        <div class="review-actions">
+          <h2>Super! 🎉</h2>
+          <p>Hoe wil je je foto's ontvangen?</p>
+          <button class="big-btn" data-send="email">✉️ Via e-mail</button>
+          <button class="big-btn" data-send="sms">📱 Via sms</button>
+          <button class="big-btn" id="btn-qr">📲 Scan QR-code</button>
+          <button class="link-btn" id="btn-retake">↺ Opnieuw</button>
+          <button class="link-btn" id="btn-done">Klaar, niet versturen</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- INVOER -->
+    <section id="screen-input" class="screen panel-screen">
+      <form id="send-form" class="card" autocomplete="off" novalidate>
+        <h2 id="input-title">Je e-mailadres</h2>
+        <input id="input-to" name="to" required>
+        <p class="hint" id="input-hint"></p>
+        <p class="error hidden" id="input-error"></p>
+        <div class="row">
+          <button type="button" class="link-btn" id="btn-back">← Terug</button>
+          <button type="submit" class="big-btn" id="btn-send">Versturen</button>
+        </div>
+        <p class="privacy">Je foto wordt tijdelijk opgeslagen om hem naar je te kunnen sturen en wordt daarna automatisch verwijderd.</p>
+      </form>
+    </section>
+
+    <!-- KLAAR -->
+    <section id="screen-done" class="screen panel-screen">
+      <div class="card center">
+        <div class="done-icon" id="done-icon">✅</div>
+        <h2 id="done-title">Verstuurd!</h2>
+        <p id="done-text">Check je inbox.</p>
+        <img id="qr-img" class="qr hidden" alt="QR-code om je foto te downloaden">
+        <div class="row center-row">
+          <button class="big-btn" id="btn-other">Ook naar iemand anders sturen</button>
+          <button class="link-btn" id="btn-new">Nieuwe sessie</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Flits-overlay -->
+    <div id="flash"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
