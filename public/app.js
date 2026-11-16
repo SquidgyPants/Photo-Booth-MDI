@@ -361,6 +361,27 @@
     return data;
   }
 
+  // Delen vanaf de iPad (AirDrop, WhatsApp, Berichten…) – werkt zonder server of internet.
+  function shareFile() {
+    return stripBlob && new File([stripBlob], 'fotostrip-minor-dance-industry.jpg', { type: 'image/jpeg' });
+  }
+  function canShareFiles() {
+    try {
+      const test = new File([new Blob()], 'test.jpg', { type: 'image/jpeg' });
+      return !!navigator.canShare?.({ files: [test] });
+    } catch (_) { return false; }
+  }
+  async function shareStrip() {
+    const file = shareFile();
+    if (!file) return;
+    try {
+      // Geen await vóór share(): Safari eist dat dit direct na de tik gebeurt.
+      await navigator.share({ files: [file], title: config.eventName });
+    } catch (err) {
+      if (err.name !== 'AbortError') alert('Delen lukt niet: ' + err.message);
+    }
+  }
+
   // QR-code: foto uploaden en een scanbare downloadlink tonen.
   async function showQr() {
     if (busy) return;
@@ -376,7 +397,7 @@
       $('#qr-img').classList.remove('hidden');
       $('#done-icon').textContent = '📲';
       $('#done-title').textContent = 'Scan de QR-code';
-      $('#done-text').textContent = 'Open de camera op je telefoon en richt hem op de code om je foto te downloaden.';
+      $('#done-text').textContent = 'Richt de camera van je telefoon op de code: je foto wordt direct gedownload.';
       show('done');
       clearTimeout(doneTimer);
       doneTimer = setTimeout(newSession, QR_RESET_MS);
@@ -449,6 +470,8 @@
   $('#btn-back').addEventListener('click', () => show('review'));
   document.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', () => openInput(b.dataset.send)));
   $('#btn-qr').addEventListener('click', showQr);
+  $('#btn-share').addEventListener('click', shareStrip);
+  $('#btn-share').classList.toggle('hidden', !canShareFiles());
   $('#send-form').addEventListener('submit', send);
 
   // Voorkom zoomen/scrollen met gebaren

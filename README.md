@@ -62,7 +62,9 @@ De iPad-camera werkt alleen via **https**, en gasten moeten de downloadlink op h
 npm start
 cloudflared tunnel --url http://localhost:3000
 ```
-Je krijgt een `https://…trycloudflare.com`-adres. Zet dat als `PUBLIC_URL` in `.env` en herstart. Nadeel: als de laptop uit gaat, werken de sms-links niet meer (mail heeft de foto als bijlage, dus die blijft werken). Met een eigen domein kun je een vaste Cloudflare-tunnel maken, bv. op een Raspberry Pi thuis die altijd aan staat.
+Je krijgt een `https://…trycloudflare.com`-adres. Open dat op de iPad. QR-codes en links gebruiken automatisch hetzelfde adres als de iPad, dus `PUBLIC_URL` hoef je niet in te vullen (alleen nodig als de iPad de app via `localhost` opent).
+
+**Zonder internet/server:** met de knop **Delen / AirDrop** stuurt de iPad de fotostrip direct naar de telefoon van de gast (AirDrop, WhatsApp, Berichten). Daar is geen server voor nodig. Nadeel: als de laptop uit gaat, werken de sms-links niet meer (mail heeft de foto als bijlage, dus die blijft werken). Met een eigen domein kun je een vaste Cloudflare-tunnel maken, bv. op een Raspberry Pi thuis die altijd aan staat.
 
 **B. Kleine server/VPS (± €4–6 per maand)** – bv. Hetzner of een vergelijkbare provider. Zet de map erop, `npm install`, draai met `pm2 start server.js`, en zet er https voor (Caddy doet dat automatisch). Links blijven dan altijd werken.
 
@@ -104,7 +106,7 @@ Met een **supervised** iPad (via Apple Configurator op een Mac) en een MDM-diens
 ---
 
 ## 6. Checklist op de dag zelf
-- [ ] Server/laptop draait, `PUBLIC_URL` klopt
+- [ ] Server/laptop draait, QR-code getest met een telefoon op mobiele data
 - [ ] Testmail en test-sms naar jezelf gestuurd
 - [ ] Android-sms-telefoon aan de oplader en online
 - [ ] iPad: oplader, helderheid max, Niet storen, Begeleide toegang aan

@@ -31,6 +31,7 @@ fs.mkdirSync(PHOTO_DIR, { recursive: true });
 
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', true); // achter Cloudflare-tunnel: juiste https-adres herkennen
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 // ---------- Mail ----------
@@ -99,6 +100,15 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// Basisadres voor links/QR: het adres waarop de iPad de app zelf bereikt.
+// Dat adres werkt gegarandeerd; PUBLIC_URL is alleen nodig als de iPad via localhost draait.
+function baseUrl(req) {
+  const host = req.get('host') || '';
+  const isLocal = /^(localhost|127\.|\[::1\])/i.test(host);
+  if (isLocal && PUBLIC_URL) return PUBLIC_URL.replace(/\/$/, '');
+  return `${req.protocol}://${host}`;
+}
+
 // ---------- Routes ----------
 app.get('/api/config', (req, res) => res.json({ eventName: EVENT_NAME, footer: STRIP_FOOTER }));
 
@@ -114,19 +124,31 @@ app.post('/api/send', requireKey, rateLimit, upload.single('photo'), async (req,
     const id = crypto.randomBytes(12).toString('base64url');
     const file = path.join(PHOTO_DIR, `${id}.jpg`);
     await fs.promises.writeFile(file, req.file.buffer);
-    const link = `${PUBLIC_URL.replace(/\/$/, '')}/p/${id}`;
+    const base = baseUrl(req);
+    const link = `${base}/p/${id}`;
+    const download = `${base}/d/${id}`; // QR: start direct de download, geen tussenpagina
 
     let qr;
     if (type === 'email') await sendEmail(to, file, link);
     else if (type === 'sms') await sendSms(to, link);
-    else qr = await QRCode.toString(link, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' });
+    else qr = await QRCode.toString(download, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' });
 
     console.log(`${new Date().toISOString()} ${type === 'qr' ? 'qr-code gemaakt' : `${type} verstuurd`} (${id})`);
-    res.json({ ok: true, link, qr });
+    res.json({ ok: true, link: type === 'qr' ? download : link, qr });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'Kon niet versturen, probeer opnieuw' });
   }
+});
+
+// Directe download (voor de QR-code)
+app.get('/d/:id', (req, res) => {
+  const id = req.params.id;
+  const file = path.join(PHOTO_DIR, `${id}.jpg`);
+  if (!/^[\w-]{10,40}$/.test(id) || !fs.existsSync(file)) {
+    return res.status(404).send('Deze foto bestaat niet (meer).');
+  }
+  res.download(file, 'fotostrip-minor-dance-industry.jpg');
 });
 
 // Downloadpagina voor gasten
