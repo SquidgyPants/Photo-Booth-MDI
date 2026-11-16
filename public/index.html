@@ -53,7 +53,7 @@
           <h2>Super! 🎉</h2>
           <p>Hoe wil je je foto's ontvangen?</p>
           <button class="big-btn hidden" id="btn-share">📤 Delen / AirDrop</button>
-          <button class="big-btn" data-send="email">✉️ Via e-mail</button>
+          <button class="big-btn" id="btn-email">✉️ Via e-mail</button>
           <button class="link-btn" id="btn-retake">↺ Opnieuw</button>
           <button class="link-btn" id="btn-done">Klaar, niet versturen</button>
         </div>
@@ -63,25 +63,24 @@
     <!-- INVOER -->
     <section id="screen-input" class="screen panel-screen">
       <form id="send-form" class="card" autocomplete="off" novalidate>
-        <h2 id="input-title">Je e-mailadres</h2>
-        <input id="input-to" name="to" required>
-        <p class="hint" id="input-hint"></p>
+        <h2>Je e-mailadres</h2>
+        <input id="input-to" name="to" type="email" inputmode="email" placeholder="naam@voorbeeld.nl" required>
+        <p class="hint">Je ontvangt de fotostrip als bijlage.</p>
         <p class="error hidden" id="input-error"></p>
         <div class="row">
           <button type="button" class="link-btn" id="btn-back">← Terug</button>
           <button type="submit" class="big-btn" id="btn-send">Versturen</button>
         </div>
-        <p class="privacy">Je foto wordt tijdelijk opgeslagen om hem naar je te kunnen sturen en wordt daarna automatisch verwijderd.</p>
+        <p class="privacy">Je foto wordt tijdelijk opgeslagen om hem naar je te kunnen mailen en wordt daarna automatisch verwijderd.</p>
       </form>
     </section>
 
     <!-- KLAAR -->
     <section id="screen-done" class="screen panel-screen">
       <div class="card center">
-        <div class="done-icon" id="done-icon">✅</div>
-        <h2 id="done-title">Verstuurd!</h2>
+        <div class="done-icon">✅</div>
+        <h2>Verstuurd!</h2>
         <p id="done-text">Check je inbox.</p>
-        <img id="qr-img" class="qr hidden" alt="QR-code om je foto te downloaden">
         <div class="row center-row">
           <button class="big-btn" id="btn-other">Ook naar iemand anders sturen</button>
           <button class="link-btn" id="btn-new">Nieuwe sessie</button>

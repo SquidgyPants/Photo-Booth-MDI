@@ -1,5 +1,5 @@
 /* Photo Booth – iPad web-app
- * Flow: start → 3x (5s aftellen → foto) → fotostrip → mail/sms → klaar
+ * Flow: start → 3x (5s aftellen → foto) → fotostrip → delen (AirDrop) of e-mail → klaar
  */
 (() => {
   'use strict';
@@ -9,7 +9,6 @@
   const COUNTDOWN = 4;          // seconden tussen foto's
   const IDLE_RESET_MS = 90_000; // terug naar start bij inactiviteit
   const DONE_RESET_MS = 15_000; // na versturen automatisch terug
-  const QR_RESET_MS = 60_000;   // QR-code blijft langer in beeld zodat iedereen kan scannen
 
   // Booth-sleutel: open de app één keer met ?key=JOUWSLEUTEL, daarna wordt hij onthouden.
   const params = new URLSearchParams(location.search);
@@ -33,7 +32,6 @@
   let shots = [];
   let stripBlob = null;
   let stripDataUrl = null;
-  let sendType = 'email';
   let busy = false;
   let idleTimer = null;
   let doneTimer = null;
@@ -307,49 +305,23 @@
   }
 
   // ---------- Versturen ----------
-  function openInput(type) {
-    sendType = type;
+  function openEmail() {
     const input = $('#input-to');
     input.value = '';
     $('#input-error').classList.add('hidden');
-    if (type === 'email') {
-      $('#input-title').textContent = 'Je e-mailadres';
-      input.type = 'email';
-      input.inputMode = 'email';
-      input.placeholder = 'naam@voorbeeld.nl';
-      $('#input-hint').textContent = 'Je ontvangt de fotostrip als bijlage.';
-    } else {
-      $('#input-title').textContent = 'Je mobiele nummer';
-      input.type = 'tel';
-      input.inputMode = 'tel';
-      input.placeholder = '06 12345678';
-      $('#input-hint').textContent = 'Je ontvangt een sms met een link om je foto\'s te downloaden.';
-    }
     show('input');
     setTimeout(() => input.focus(), 250);
   }
 
-  function normalizePhone(raw) {
-    let p = raw.replace(/[\s\-().]/g, '');
-    if (p.startsWith('00')) p = '+' + p.slice(2);
-    if (/^06\d{8}$/.test(p)) p = '+31' + p.slice(1);       // Nederlands 06-nummer
-    if (/^6\d{8}$/.test(p)) p = '+31' + p;
-    return /^\+\d{8,15}$/.test(p) ? p : null;
+  function validEmail(value) {
+    const v = value.trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) ? v : null;
   }
 
-  function validate(value) {
-    if (sendType === 'email') {
-      const v = value.trim();
-      return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) ? v : null;
-    }
-    return normalizePhone(value);
-  }
-
-  // Uploadt de fotostrip naar de server; geeft { link, qr } terug.
-  async function uploadStrip(type, to) {
+  // Uploadt de fotostrip naar de server, die hem per e-mail verstuurt.
+  async function emailStrip(to) {
     const fd = new FormData();
-    fd.append('type', type);
-    if (to) fd.append('to', to);
+    fd.append('to', to);
     fd.append('photo', stripBlob, 'fotostrip.jpg');
     const res = await fetch('api/send', {
       method: 'POST',
@@ -382,40 +354,12 @@
     }
   }
 
-  // QR-code: foto uploaden en een scanbare downloadlink tonen.
-  async function showQr() {
-    if (busy) return;
-    busy = true;
-    const btn = $('#btn-qr');
-    const label = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Bezig…';
-    try {
-      const data = await uploadStrip('qr');
-      if (!data.qr) throw new Error('Geen QR-code ontvangen');
-      $('#qr-img').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data.qr);
-      $('#qr-img').classList.remove('hidden');
-      $('#done-icon').textContent = '📲';
-      $('#done-title').textContent = 'Scan de QR-code';
-      $('#done-text').textContent = 'Richt de camera van je telefoon op de code: je foto wordt direct gedownload.';
-      show('done');
-      clearTimeout(doneTimer);
-      doneTimer = setTimeout(newSession, QR_RESET_MS);
-    } catch (err) {
-      alert('QR-code maken mislukt: ' + err.message);
-    } finally {
-      busy = false;
-      btn.disabled = false;
-      btn.textContent = label;
-    }
-  }
-
   async function send(e) {
     e.preventDefault();
     const errEl = $('#input-error');
-    const to = validate($('#input-to').value);
+    const to = validEmail($('#input-to').value);
     if (!to) {
-      errEl.textContent = sendType === 'email' ? 'Dit e-mailadres lijkt niet te kloppen.' : 'Dit telefoonnummer lijkt niet te kloppen.';
+      errEl.textContent = 'Dit e-mailadres lijkt niet te kloppen.';
       errEl.classList.remove('hidden');
       return;
     }
@@ -425,14 +369,8 @@
     errEl.classList.add('hidden');
 
     try {
-      await uploadStrip(sendType, to);
-
-      $('#done-icon').textContent = '✅';
-      $('#done-title').textContent = 'Verstuurd!';
-      $('#done-text').textContent = sendType === 'email'
-        ? `Je foto's zijn onderweg naar ${to}. Check ook je spam-map.`
-        : `Je ontvangt zo een sms op ${to}.`;
-      $('#qr-img').classList.add('hidden');
+      await emailStrip(to);
+      $('#done-text').textContent = `Je foto's zijn onderweg naar ${to}. Check ook je spam-map.`;
       show('done');
       clearTimeout(doneTimer);
       doneTimer = setTimeout(newSession, DONE_RESET_MS);
@@ -468,8 +406,7 @@
   $('#btn-new').addEventListener('click', newSession);
   $('#btn-other').addEventListener('click', () => { clearTimeout(doneTimer); show('review'); });
   $('#btn-back').addEventListener('click', () => show('review'));
-  document.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', () => openInput(b.dataset.send)));
-  $('#btn-qr').addEventListener('click', showQr);
+  $('#btn-email').addEventListener('click', openEmail);
   $('#btn-share').addEventListener('click', shareStrip);
   $('#btn-share').classList.toggle('hidden', !canShareFiles());
   $('#send-form').addEventListener('submit', send);

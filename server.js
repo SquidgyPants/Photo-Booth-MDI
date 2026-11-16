@@ -1,7 +1,7 @@
 /* Photo Booth server
  * - Serveert de iPad web-app
  * - Slaat fotostrips op en maakt een downloadpagina per foto
- * - Verstuurt e-mail (SMTP, bv. Gmail) en sms (via je eigen Android-telefoon met TextBee)
+ * - Verstuurt de fotostrip per e-mail (SMTP, bv. Gmail)
  */
 require('dotenv').config();
 const path = require('path');
@@ -10,7 +10,6 @@ const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const nodemailer = require('nodemailer');
-const QRCode = require('qrcode');
 
 const {
   PORT = 3000,
@@ -21,9 +20,6 @@ const {
   KEEP_DAYS = '30',
   // E-mail
   SMTP_HOST = '', SMTP_PORT = '465', SMTP_USER = '', SMTP_PASS = '', MAIL_FROM = '',
-  // Sms via TextBee (Android-telefoon als sms-gateway)
-  TEXTBEE_API_KEY = '', TEXTBEE_DEVICE_ID = '',
-  TEXTBEE_BASE_URL = 'https://api.textbee.dev/api/v1',
 } = process.env;
 
 const PHOTO_DIR = path.join(__dirname, 'data', 'photos');
@@ -63,21 +59,6 @@ async function sendEmail(to, file, link) {
   });
 }
 
-// ---------- Sms ----------
-async function sendSms(to, link) {
-  const message = `Je foto's van ${EVENT_NAME} staan klaar! Download ze hier: ${link}`;
-  if (!TEXTBEE_API_KEY || !TEXTBEE_DEVICE_ID) {
-    console.log(`[TESTMODUS] Sms naar ${to}: ${message}`);
-    return;
-  }
-  const res = await fetch(`${TEXTBEE_BASE_URL}/gateway/devices/${TEXTBEE_DEVICE_ID}/send-sms`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': TEXTBEE_API_KEY },
-    body: JSON.stringify({ recipients: [to], message }),
-  });
-  if (!res.ok) throw new Error(`Sms-gateway gaf fout ${res.status}: ${await res.text()}`);
-}
-
 // ---------- Beveiliging & limieten ----------
 function requireKey(req, res, next) {
   if (!BOOTH_KEY || req.get('x-booth-key') === BOOTH_KEY) return next();
@@ -95,12 +76,11 @@ function rateLimit(req, res, next) {
 }
 
 const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
-const isPhone = (v) => /^\+\d{8,15}$/.test(v);
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// Basisadres voor links/QR: het adres waarop de iPad de app zelf bereikt.
+// Basisadres voor links in de mail: het adres waarop de iPad de app zelf bereikt.
 // Dat adres werkt gegarandeerd; PUBLIC_URL is alleen nodig als de iPad via localhost draait.
 function baseUrl(req) {
   const host = req.get('host') || '';
@@ -114,41 +94,23 @@ app.get('/api/config', (req, res) => res.json({ eventName: EVENT_NAME, footer: S
 
 app.post('/api/send', requireKey, rateLimit, upload.single('photo'), async (req, res) => {
   try {
-    const { type, to } = req.body || {};
+    const { to } = req.body || {};
     if (!req.file || !req.file.buffer?.length) return res.status(400).json({ error: 'Geen foto ontvangen' });
     if (req.file.buffer[0] !== 0xff || req.file.buffer[1] !== 0xd8) return res.status(400).json({ error: 'Ongeldig bestand' });
-    if (type === 'email' && !isEmail(to)) return res.status(400).json({ error: 'Ongeldig e-mailadres' });
-    if (type === 'sms' && !isPhone(to)) return res.status(400).json({ error: 'Ongeldig telefoonnummer' });
-    if (type !== 'email' && type !== 'sms' && type !== 'qr') return res.status(400).json({ error: 'Onbekend type' });
+    if (!isEmail(to)) return res.status(400).json({ error: 'Ongeldig e-mailadres' });
 
     const id = crypto.randomBytes(12).toString('base64url');
     const file = path.join(PHOTO_DIR, `${id}.jpg`);
     await fs.promises.writeFile(file, req.file.buffer);
-    const base = baseUrl(req);
-    const link = `${base}/p/${id}`;
-    const download = `${base}/d/${id}`; // QR: start direct de download, geen tussenpagina
+    const link = `${baseUrl(req)}/p/${id}`;
+    await sendEmail(to, file, link);
 
-    let qr;
-    if (type === 'email') await sendEmail(to, file, link);
-    else if (type === 'sms') await sendSms(to, link);
-    else qr = await QRCode.toString(download, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' });
-
-    console.log(`${new Date().toISOString()} ${type === 'qr' ? 'qr-code gemaakt' : `${type} verstuurd`} (${id})`);
-    res.json({ ok: true, link: type === 'qr' ? download : link, qr });
+    console.log(`${new Date().toISOString()} mail verstuurd (${id})`);
+    res.json({ ok: true, link });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'Kon niet versturen, probeer opnieuw' });
   }
-});
-
-// Directe download (voor de QR-code)
-app.get('/d/:id', (req, res) => {
-  const id = req.params.id;
-  const file = path.join(PHOTO_DIR, `${id}.jpg`);
-  if (!/^[\w-]{10,40}$/.test(id) || !fs.existsSync(file)) {
-    return res.status(404).send('Deze foto bestaat niet (meer).');
-  }
-  res.download(file, 'fotostrip-minor-dance-industry.jpg');
 });
 
 // Downloadpagina voor gasten
@@ -160,7 +122,7 @@ app.get('/p/:id', (req, res) => {
   res.send(`<!DOCTYPE html><html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Je foto's – ${escapeHtml(EVENT_NAME)}</title>
-<meta property="og:image" content="${PUBLIC_URL}/photos/${id}.jpg">
+<meta property="og:image" content="${baseUrl(req)}/photos/${id}.jpg">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500&family=Barlow+Condensed:wght@700&display=swap">
 <style>body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 85% 10%,rgba(135,67,136,.45),transparent 55%),radial-gradient(ellipse at 10% 90%,rgba(229,200,12,.15),transparent 55%),#1e0f30;color:#fff;font-family:Barlow,-apple-system,Arial,sans-serif;text-align:center;padding:24px 16px;box-sizing:border-box}
 .logo{width:min(320px,70vw);height:auto}
@@ -193,5 +155,5 @@ setInterval(cleanup, 6 * 3600 * 1000);
 app.listen(PORT, () => {
   console.log(`Photo Booth draait op http://localhost:${PORT}`);
   console.log(`Publieke URL: ${PUBLIC_URL}`);
-  console.log(`Mail: ${mailer ? 'aan' : 'TESTMODUS'} · Sms: ${TEXTBEE_API_KEY ? 'aan' : 'TESTMODUS'}`);
+  console.log(`Mail: ${mailer ? 'aan' : 'TESTMODUS'}`);
 });

@@ -243,16 +243,6 @@ html, body {
 .center { text-align: center; }
 .done-icon { font-size: 84px; }
 #done-text { font-size: 22px; color: var(--muted); }
-.qr {
-  display: block;
-  width: min(320px, 60vw);
-  height: auto;
-  margin: 18px auto 6px;
-  padding: 12px;
-  background: #fff;
-  border-radius: 16px;
-  image-rendering: pixelated;
-}
 
 .error { color: #ffa98a; font-size: 18px; margin: 10px 0 0; }
 #camera-error {

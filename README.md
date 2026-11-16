@@ -1,10 +1,10 @@
 # Photo Booth voor iPad
 
-Web-app (PWA) + kleine server. Gasten drukken op **Maak foto's**, de app maakt 3 foto's met elke keer 5 seconden aftellen (optioneel met schermflits), maakt er een fotostrip van en verstuurt die via **e-mail** (als bijlage), **sms** (met downloadlink) of toont een **QR-code** waarmee de gast de foto direct op de eigen telefoon downloadt. Voor de QR-code is geen mail of sms nodig, maar `PUBLIC_URL` moet wel kloppen en bereikbaar zijn vanaf de telefoon van de gast.
+Web-app (PWA) + kleine server. Gasten drukken op **Maak foto's**, de app maakt 3 foto's met elke keer 5 seconden aftellen (optioneel met schermflits), maakt er een fotostrip van in de huisstijl van Minor Dance Industry. Gasten krijgen de strip via **Delen / AirDrop** (direct vanaf de iPad naar hun telefoon, ook via WhatsApp of Berichten) of via **e-mail** (als bijlage).
 
 ```
 photobooth/
-├── server.js          ← server: opslaan, mail, sms, downloadpagina
+├── server.js          ← server: opslaan, mail, downloadpagina
 ├── .env.example       ← instellingen (kopiëren naar .env)
 └── public/            ← de iPad-app (index.html, app.js, style.css)
 ```
@@ -18,11 +18,11 @@ Nodig: [Node.js 18+](https://nodejs.org).
 ```bash
 cd photobooth
 npm install
-cp .env.example .env      # laat mail/sms leeg = testmodus (er wordt alleen gelogd)
+cp .env.example .env      # laat mail leeg = testmodus (er wordt alleen gelogd)
 npm start
 ```
 
-Open http://localhost:3000 in Chrome/Safari op je computer. In testmodus zie je in de terminal welke mail/sms verstuurd zou worden.
+Open http://localhost:3000 in Chrome/Safari op je computer. In testmodus zie je in de terminal welke mail verstuurd zou worden.
 
 ### Testen op de iPad (zonder eigen server)
 ```bash
@@ -32,7 +32,7 @@ Dit start een gratis tijdelijke https-tunnel en toont een QR-code. Scan die met 
 
 ---
 
-## 2. Versturen instellen
+## 2. E-mail instellen
 
 ### E-mail: gratis via Gmail
 1. Maak een apart Gmail-adres voor de booth (bv. `jouwfeest.photobooth@gmail.com`).
@@ -41,30 +41,22 @@ Dit start een gratis tijdelijke https-tunnel en toont een QR-code. Scan die met 
 
 Gmail laat ongeveer 500 mails per dag toe – ruim voldoende voor een feest. De fotostrip zit als bijlage in de mail.
 
-### Sms: zonder kosten per bericht, via je eigen Android-telefoon
-Echt gratis sms-diensten bestaan niet: elke sms-provider (Twilio, MessageBird, enz.) rekent per bericht. De gratis route is **je eigen telefoon de sms laten versturen** met de open-source app **TextBee**:
-
-1. Pak een (oude) **Android**-telefoon met een simkaart met **onbeperkt sms** of een ruime sms-bundel. (iPhones kunnen dit niet: iOS laat apps niet automatisch sms'en.)
-2. Maak een account op textbee.dev, installeer de TextBee-app op die telefoon en koppel hem.
-3. Zet `TEXTBEE_API_KEY` en `TEXTBEE_DEVICE_ID` in `.env`.
-4. Laat de telefoon aan de oplader en aan wifi tijdens het event.
-
-De sms bevat een link naar een downloadpagina met de foto. Controleer vooraf even de actuele voorwaarden/limieten van TextBee's gratis account; je kunt TextBee ook zelf hosten (open source).
-
 ---
 
-## 3. Online zetten (nodig voor iPad en sms-links)
+## 3. Online zetten
 
-De iPad-camera werkt alleen via **https**, en gasten moeten de downloadlink op hun eigen telefoon kunnen openen. De server moet dus via internet bereikbaar zijn. Twee opties:
+De iPad-camera werkt alleen via **https**, dus de iPad moet de app via een https-adres openen. Twee opties:
 
 **A. Laptop/mini-pc op het event + Cloudflare Tunnel (gratis)**
 ```bash
 npm start
 cloudflared tunnel --url http://localhost:3000
 ```
-Je krijgt een `https://…trycloudflare.com`-adres. Open dat op de iPad. QR-codes en links gebruiken automatisch hetzelfde adres als de iPad, dus `PUBLIC_URL` hoef je niet in te vullen (alleen nodig als de iPad de app via `localhost` opent).
+Je krijgt een `https://…trycloudflare.com`-adres. Open dat op de iPad. De downloadlink in de mail gebruikt automatisch hetzelfde adres als de iPad, dus `PUBLIC_URL` hoef je niet in te vullen (alleen nodig als de iPad de app via `localhost` opent).
 
-**Zonder internet/server:** met de knop **Delen / AirDrop** stuurt de iPad de fotostrip direct naar de telefoon van de gast (AirDrop, WhatsApp, Berichten). Daar is geen server voor nodig. Nadeel: als de laptop uit gaat, werken de sms-links niet meer (mail heeft de foto als bijlage, dus die blijft werken). Met een eigen domein kun je een vaste Cloudflare-tunnel maken, bv. op een Raspberry Pi thuis die altijd aan staat.
+**Zonder internet/server:** met de knop **Delen / AirDrop** stuurt de iPad de fotostrip direct naar de telefoon van de gast (AirDrop, WhatsApp, Berichten). Daar is geen server voor nodig.
+
+Als de laptop uit gaat, werkt de downloadlink in de mail niet meer, maar de foto zit ook als bijlage in de mail. Met een eigen domein kun je een vaste Cloudflare-tunnel maken, bv. op een Raspberry Pi thuis die altijd aan staat.
 
 **B. Kleine server/VPS (± €4–6 per maand)** – bv. Hetzner of een vergelijkbare provider. Zet de map erop, `npm install`, draai met `pm2 start server.js`, en zet er https voor (Caddy doet dat automatisch). Links blijven dan altijd werken.
 
@@ -106,9 +98,8 @@ Met een **supervised** iPad (via Apple Configurator op een Mac) en een MDM-diens
 ---
 
 ## 6. Checklist op de dag zelf
-- [ ] Server/laptop draait, QR-code getest met een telefoon op mobiele data
-- [ ] Testmail en test-sms naar jezelf gestuurd
-- [ ] Android-sms-telefoon aan de oplader en online
+- [ ] Server/laptop draait en de app opent op de iPad
+- [ ] Testmail naar jezelf gestuurd en AirDrop naar je eigen telefoon getest
 - [ ] iPad: oplader, helderheid max, Niet storen, Begeleide toegang aan
 - [ ] Goede verlichting (ringlamp) en een leuke achtergrond
 
@@ -117,4 +108,4 @@ Met een **supervised** iPad (via Apple Configurator op een Mac) en een MDM-diens
 - Naam van het event en tekst onder de strip: `EVENT_NAME` en `STRIP_FOOTER` in `.env`.
 - Kleuren: bovenaan `public/style.css`.
 
-**Privacy:** je verwerkt e-mailadressen, telefoonnummers en foto's van gasten. De server bewaart alleen de foto (niet het adres/nummer) en verwijdert die automatisch. Meld bij de booth kort dat foto's tijdelijk worden opgeslagen.
+**Privacy:** je verwerkt e-mailadressen en foto's van gasten. De server bewaart alleen gemailde foto's (niet het e-mailadres) en verwijdert die automatisch. Meld bij de booth kort dat foto's tijdelijk worden opgeslagen.
