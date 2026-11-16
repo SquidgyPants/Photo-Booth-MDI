@@ -139,12 +139,16 @@ app.get('/p/:id', (req, res) => {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Je foto's – ${escapeHtml(EVENT_NAME)}</title>
 <meta property="og:image" content="${PUBLIC_URL}/photos/${id}.jpg">
-<style>body{margin:0;background:#111;color:#fff;font-family:-apple-system,Arial,sans-serif;text-align:center;padding:24px 16px}
-img{max-width:100%;max-height:75vh;border-radius:10px;box-shadow:0 10px 40px #000}
-a{display:inline-block;margin-top:20px;background:#ff3d6e;color:#fff;padding:14px 28px;border-radius:999px;text-decoration:none;font-size:18px}
-p{color:#aaa}</style></head><body>
-<h1>${escapeHtml(EVENT_NAME)} 📸</h1>
-<img src="/photos/${id}.jpg" alt="Fotostrip">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500&family=Barlow+Condensed:wght@700&display=swap">
+<style>body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 85% 10%,rgba(135,67,136,.45),transparent 55%),radial-gradient(ellipse at 10% 90%,rgba(229,200,12,.15),transparent 55%),#1e0f30;color:#fff;font-family:Barlow,-apple-system,Arial,sans-serif;text-align:center;padding:24px 16px;box-sizing:border-box}
+.logo{width:min(320px,70vw);height:auto}
+h1{font-family:"Barlow Condensed","Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:1px;color:#e5c80c;margin:8px 0 18px}
+img.strip{max-width:100%;max-height:75vh;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+a{display:inline-block;margin-top:20px;background:linear-gradient(135deg,#e5c80c,#e9a31f 60%,#e57a43);color:#1e0f30;font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:14px 32px;border-radius:999px;text-decoration:none;font-size:22px}
+p{color:rgba(242,230,245,.7)}</style></head><body>
+<img class="logo" src="/logo.png" alt="Minor Dance Industry">
+<h1>${escapeHtml(EVENT_NAME)}</h1>
+<img class="strip" src="/photos/${id}.jpg" alt="Fotostrip">
 <div><a href="/photos/${id}.jpg" download="fotostrip.jpg">Download foto</a></div>
 <p>Op iPhone: houd de foto ingedrukt › "Zet in Foto's".</p>
 </body></html>`);

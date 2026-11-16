@@ -176,35 +176,134 @@
     ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
   }
 
+  // Huisstijl Minor Dance Industry (kleuren uit het logo)
+  const BRAND = {
+    night: '#1e0f30',
+    deep: '#2a1640',
+    purple: '#472869',
+    plum: '#874388',
+    yellow: '#e5c80c',
+    orange: '#e57a43',
+    lavender: '#f2e6f5',
+  };
+  const DISPLAY_FONT = '"Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif';
+
+  // Logo één keer inladen voor de fotostrip
+  const logoImg = new Image();
+  const logoReady = new Promise((resolve) => {
+    logoImg.onload = () => resolve(true);
+    logoImg.onerror = () => resolve(false);
+  });
+  logoImg.src = 'logo.png';
+
+  async function fontsReady() {
+    if (!document.fonts?.load) return;
+    await Promise.race([
+      Promise.all([
+        document.fonts.load(`700 64px ${DISPLAY_FONT}`),
+        document.fonts.load(`500 40px ${DISPLAY_FONT}`),
+      ]).catch(() => {}),
+      sleep(1500),
+    ]);
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function glow(ctx, x, y, r, color) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, color);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+
   async function buildStrip() {
-    const W = 1200, pad = 50, photoW = W - pad * 2, photoH = Math.round(photoW * 3 / 4);
-    const header = 150, footer = 120;
-    const H = header + SHOTS * photoH + (SHOTS - 1) * pad + footer + pad;
+    const hasLogo = await logoReady;
+    await fontsReady();
+
+    const W = 1200, pad = 60, gap = 40, frame = 8;
+    const photoW = W - pad * 2, photoH = Math.round(photoW * 3 / 4);
+    const logoW = 760;
+    const logoH = hasLogo ? Math.round(logoW * logoImg.height / logoImg.width) : 200;
+    const header = logoH + 100;
+    const footer = 230;
+    const H = header + SHOTS * photoH + (SHOTS - 1) * gap + footer;
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
     const ctx = c.getContext('2d');
 
-    ctx.fillStyle = '#ffffff';
+    // Achtergrond: diep paars met gloed in logokleuren
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, BRAND.deep);
+    bg.addColorStop(0.5, BRAND.night);
+    bg.addColorStop(1, BRAND.deep);
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
+    glow(ctx, W * 0.85, header * 0.4, 700, 'rgba(135, 67, 136, 0.55)');
+    glow(ctx, W * 0.1, H * 0.45, 650, 'rgba(229, 200, 12, 0.16)');
+    glow(ctx, W * 0.9, H * 0.7, 600, 'rgba(135, 67, 136, 0.4)');
+    glow(ctx, W * 0.2, H - 120, 600, 'rgba(229, 122, 67, 0.25)');
 
-    ctx.fillStyle = '#111';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = '700 64px -apple-system, "Helvetica Neue", Arial, sans-serif';
-    ctx.fillText(config.eventName, W / 2, header / 2 + 10);
 
-    shots.forEach((frame, i) => {
-      const y = header + i * (photoH + pad);
-      coverDraw(ctx, frame, pad, y, photoW, photoH);
+    // Logo bovenaan
+    if (hasLogo) {
+      ctx.drawImage(logoImg, (W - logoW) / 2, 50, logoW, logoH);
+    } else {
+      ctx.fillStyle = '#fff';
+      ctx.font = `700 90px ${DISPLAY_FONT}`;
+      ctx.fillText('MINOR DANCE INDUSTRY', W / 2, header / 2);
+    }
+
+    // Foto's met lavendel kader
+    shots.forEach((img, i) => {
+      const x = pad, y = header + i * (photoH + gap);
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+      ctx.shadowBlur = 30;
+      ctx.shadowOffsetY = 10;
+      ctx.fillStyle = BRAND.lavender;
+      roundRect(ctx, x - frame, y - frame, photoW + frame * 2, photoH + frame * 2, 22);
+      ctx.fill();
+      ctx.restore();
+      ctx.save();
+      roundRect(ctx, x, y, photoW, photoH, 14);
+      ctx.clip();
+      coverDraw(ctx, img, x, y, photoW, photoH);
+      ctx.restore();
     });
 
-    const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
-    ctx.fillStyle = '#666';
-    ctx.font = '500 44px -apple-system, "Helvetica Neue", Arial, sans-serif';
-    ctx.fillText(config.footer || date, W / 2, H - footer / 2 - pad / 2);
+    // Voettekst: lijn in logokleuren, eventnaam en datum
+    const fy = H - footer;
+    const line = ctx.createLinearGradient(pad, 0, W - pad, 0);
+    line.addColorStop(0, BRAND.plum);
+    line.addColorStop(0.35, BRAND.yellow);
+    line.addColorStop(0.65, BRAND.orange);
+    line.addColorStop(1, BRAND.plum);
+    ctx.fillStyle = line;
+    roundRect(ctx, W / 2 - 200, fy + 52, 400, 6, 3);
+    ctx.fill();
 
-    stripDataUrl = c.toDataURL('image/jpeg', 0.88);
-    stripBlob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.88));
+    ctx.fillStyle = BRAND.yellow;
+    ctx.font = `700 76px ${DISPLAY_FONT}`;
+    ctx.fillText(String(config.eventName).toUpperCase(), W / 2, fy + 120, W - pad * 2);
+
+    const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+    ctx.fillStyle = BRAND.lavender;
+    ctx.font = `500 40px ${DISPLAY_FONT}`;
+    ctx.fillText((config.footer || date).toUpperCase(), W / 2, fy + 180, W - pad * 2);
+
+    stripDataUrl = c.toDataURL('image/jpeg', 0.9);
+    stripBlob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
   }
 
   // ---------- Versturen ----------
